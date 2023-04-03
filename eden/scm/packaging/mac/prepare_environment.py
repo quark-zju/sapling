@@ -121,45 +121,6 @@ def get_bottle(bottle_name: str, bottle_hash: str, tmpdir: str):
     run_cmd(cmd)
 
 
-def set_up_downloaded_crates(tmpdir):
-    # Set Python crate
-    brew_cmd = ["brew", "--cellar"]
-    brew_location = run_cmd(brew_cmd)
-    print(f"LOCATION IS {brew_location}")
-    dylib_location = os.path.join(
-        brew_location,
-        "python@3.11/3.11.2_1/Frameworks/Python.framework/Versions/3.11/lib/libpython3.11.dylib",
-    )
-    run_cmd(
-        [
-            "tar",
-            "-zxvf",
-            os.path.join(tmpdir, "python@3.11.bottle.tar.gz"),
-            "-C",
-            tmpdir,
-            "python@3.11/3.11.2_1/Frameworks/Python.framework/Versions/3.11/Python",
-        ]
-    )
-    os.remove(dylib_location)
-    shutil.copy(
-        os.path.join(
-            tmpdir,
-            "python@3.11/3.11.2_1/Frameworks/Python.framework/Versions/3.11/Python",
-        ),
-        dylib_location,
-    )
-    # Set OpenSSL crate
-    run_cmd(
-        [
-            "tar",
-            "-zxvf",
-            os.path.join(tmpdir, "openssl@1.1.bottle.tar.gz"),
-            "-C",
-            tmpdir,
-        ]
-    )
-
-
 def create_repo_tarball(dotdir):
     run_cmd(
         [
@@ -180,7 +141,7 @@ def fill_in_formula_template(target, version, tmpdir, filled_formula_dir):
     with open(brew_formula_rb, "r") as f:
         formula = f.read()
     sha256 = run_cmd(["shasum", "-a", "256", "./sapling.tar.gz"]).split()[0]
-    cachedir = run_cmd(["brew", "--cache"])
+    cachedir = run_cmd([os.getenv("BREW") or "brew", "--cache"])
     formula = formula.replace(
         "%URL%",
         f"file://{os.path.join(os.path.abspath(os.getcwd()), 'sapling.tar.gz')}",
@@ -201,16 +162,8 @@ if __name__ == "__main__":
         print("Number of hashes and formulas to download must be the same")
         exit(1)
 
-    if "python@3.11" not in args.formula or "openssl@1.1" not in args.formula:
-        print("Must specify both python3.11 and openssl@1.1 bottles to download")
-        exit(1)
-
     tmpdir = tempfile.mkdtemp()
     print(f"TMPDIR is {tmpdir}")
-
-    for (name, hash) in zip(args.formula, args.hash):
-        get_bottle(name, hash, tmpdir)
-    set_up_downloaded_crates(tmpdir)
 
     create_repo_tarball(args.dotdir)
     fill_in_formula_template(

@@ -9,6 +9,21 @@ jobs:
   build:
     runs-on: macos-12
     steps:
+    - name: Brew
+      run: brew config
+    - name: Brew x64
+      run: arch --x86_64 brew config
+    - name: Brew location
+      run: which brew
+    - name: Brew Arm
+      run:
+       |
+          setopt sh_word_split
+          mkdir arm-homebrew && curl -L https://github.com/Homebrew/brew/tarball/master | tar xz --strip 1 -C arm-homebrew
+          export BREW="$PWD/arm-homebrew/bin/brew"
+          response=$($BREW fetch --force --bottle-tag=arm64_big_sur python@3.11 | grep "Downloaded to" | sed 's/Downloaded to//')
+          echo res $response
+          $BREW install $response
     - name: Checkout Code
       uses: actions/checkout@v3
     - name: Grant Access
@@ -18,10 +33,6 @@ jobs:
       run: echo "SAPLING_VERSION=$(ci/tag-name.sh)" >> $GITHUB_ENV
     - name: Prepare build environment
       run: 'eden/scm/packaging/mac/prepare_environment.py \
-
-        -s c11b17c8b78efa46dac2d213cd7a7b3fff75f6f5e6d2ef2248345cd4a900b1c6 -f openssl@1.1 \
-
-        -s cde36624e734632be009e3aa28d9bd07f4fa681c7caa270e7efb416b287c1e72 -f python@3.11 \
 
         -t aarch64-apple-darwin \
 
