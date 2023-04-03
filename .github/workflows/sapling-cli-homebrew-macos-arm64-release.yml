@@ -28,20 +28,13 @@ jobs:
           echo $BREW
           $BREW config
           echo "BREW=$BREW" >> "$GITHUB_ENV"
-    - name: Install arm dependency - openssl
+    - name: Install arm build dependencies - openssl and python
       run:
         |
-          response="$($BREW fetch --force --bottle-tag=arm64_big_sur openssl@1.1 | grep "Downloaded to" | sed 's/Downloaded to //')"
-          echo res "$response"
-          echo "$BREW" install "$response"
-          "$BREW" install "$response"
-    - name: Install arm dependency - python
-      run:
-        |
-          response="$($BREW fetch --force --bottle-tag=arm64_big_sur python@3.11 | grep "Downloaded to" | sed 's/Downloaded to //')"
-          echo res "$response"
-          echo "$BREW" install "$response"
-          "$BREW" install "$response"
+          for dep in openssl@1.1 python@3.11; do
+            "$BREW" fetch --force --bottle-tag=arm64_big_sur $dep
+            "$BREW" install "$(BREW --cache --bottle-tag=arm64_big_sur $dep)"
+          done
     - name: Checkout Code
       uses: actions/checkout@v3
     - name: Grant Access
