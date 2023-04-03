@@ -138,10 +138,6 @@ def fill_in_formula_template(target, version, tmpdir, filled_formula_dir):
 if __name__ == "__main__":
     args = parser.parse_args()
 
-    if len(args.hash) != len(args.formula):
-        print("Number of hashes and formulas to download must be the same")
-        exit(1)
-
     tmpdir = tempfile.mkdtemp()
     print(f"TMPDIR is {tmpdir}")
 
