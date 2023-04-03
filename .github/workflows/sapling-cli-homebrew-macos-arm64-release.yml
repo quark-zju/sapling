@@ -23,6 +23,7 @@ jobs:
           export BREW="$PWD/arm-homebrew/bin/brew"
           echo $BREW
           $BREW config
+          echo "BREW=$BREW" >> "$GITHUB_ENV"
     - name: Install arm dependency - openssl
       run:
         |
