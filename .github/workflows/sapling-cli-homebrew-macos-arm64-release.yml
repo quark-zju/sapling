@@ -7,6 +7,7 @@ name: Release - Homebrew macOS-arm64
     - test-release-*
 jobs:
   build:
+    # This runs on x64.
     runs-on: macos-12
     steps:
     - name: Brew
@@ -15,12 +16,22 @@ jobs:
       run: arch --x86_64 brew config
     - name: Brew location
       run: which brew
-    - name: Brew Arm
+    - name: Prepare homebrew for arm
       run:
        |
           mkdir arm-homebrew && curl -L https://github.com/Homebrew/brew/tarball/master | tar xz --strip 1 -C arm-homebrew
           export BREW="$PWD/arm-homebrew/bin/brew"
           echo $BREW
+          $BREW config
+    - name: Install arm dependency - openssl
+      run:
+        |
+          response=$($BREW fetch --force --bottle-tag=arm64_big_sur openssl@1.1 | grep "Downloaded to" | sed 's/Downloaded to//')
+          echo res $response
+          $BREW install $response
+    - name: Install arm dependency - python
+      run:
+        |
           response=$($BREW fetch --force --bottle-tag=arm64_big_sur python@3.11 | grep "Downloaded to" | sed 's/Downloaded to//')
           echo res $response
           $BREW install $response
