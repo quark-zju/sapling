@@ -22,26 +22,6 @@ Also downloads additional brew bottles as required.
 )
 
 parser.add_argument(
-    "-s",
-    "--hash",
-    default=None,
-    action="append",
-    type=str,
-    help="Hash of the bottle to be downloaded",
-    required=True,
-)
-
-parser.add_argument(
-    "-f",
-    "--formula",
-    default=None,
-    action="append",
-    type=str,
-    help="Name of the bottle to be downloaded",
-    required=True,
-)
-
-parser.add_argument(
     "-t",
     "--target",
     default=None,
