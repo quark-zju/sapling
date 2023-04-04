@@ -1,10 +1,14 @@
 name: Release - Homebrew macOS-x86
-'on':
+on:
   workflow_dispatch: null
   push:
     tags:
     - v*
     - test-release-*
+env:
+  HOMEBREW_GITHUB_ACTIONS: 1
+  HOMEBREW_NO_AUTO_UPDATE: 1
+  HOMEBREW_FAIL_LOG_LINES: 99999
 jobs:
   build:
     runs-on: macos-12
