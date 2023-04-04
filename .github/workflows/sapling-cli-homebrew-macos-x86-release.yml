@@ -5,6 +5,10 @@ name: Release - Homebrew macOS-x86
     tags:
     - v*
     - test-release-*
+env:
+  HOMEBREW_GITHUB_ACTIONS: 1
+  HOMEBREW_NO_AUTO_UPDATE: 1
+  HOMEBREW_FAIL_LOG_LINES: 99999
 jobs:
   build:
     runs-on: macos-12
@@ -18,10 +22,6 @@ jobs:
       run: echo "SAPLING_VERSION=$(ci/tag-name.sh)" >> $GITHUB_ENV
     - name: Prepare build environment
       run: 'eden/scm/packaging/mac/prepare_environment.py \
-
-        -s d915175bedb146e38d7a2c95e86888a60a5058a5cd21f835813d43d1372a29d9 -f openssl@1.1 \
-
-        -s 1760c64881403847ad39e6df648ff0845fab321b638715734fe0264dfe7bcbda -f python@3.11 \
 
         -t x86_64-apple-darwin \
 

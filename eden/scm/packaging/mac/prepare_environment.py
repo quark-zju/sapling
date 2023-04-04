@@ -24,21 +24,19 @@ Also downloads additional brew bottles as required.
 parser.add_argument(
     "-s",
     "--hash",
-    default=None,
+    default=[],
     action="append",
     type=str,
     help="Hash of the bottle to be downloaded",
-    required=True,
 )
 
 parser.add_argument(
     "-f",
     "--formula",
-    default=None,
+    default=[],
     action="append",
     type=str,
     help="Name of the bottle to be downloaded",
-    required=True,
 )
 
 parser.add_argument(
@@ -158,6 +156,11 @@ def set_up_downloaded_crates(tmpdir):
             tmpdir,
         ]
     )
+    # Override OPENSSL_DIR for GitHub CI.
+    env_file = os.getenv("GITHUB_ENV")
+    if env_file:
+        with open(os.getenv("GITHUB_ENV"), "a") as f:
+            f.write(f"OPENSSL_DIR={os.path.join(tmpdir, 'openssl@1.1/1.1.1s')}\n")
 
 
 def create_repo_tarball(dotdir):
@@ -201,16 +204,13 @@ if __name__ == "__main__":
         print("Number of hashes and formulas to download must be the same")
         exit(1)
 
-    if "python@3.11" not in args.formula or "openssl@1.1" not in args.formula:
-        print("Must specify both python3.11 and openssl@1.1 bottles to download")
-        exit(1)
-
     tmpdir = tempfile.mkdtemp()
     print(f"TMPDIR is {tmpdir}")
 
     for (name, hash) in zip(args.formula, args.hash):
         get_bottle(name, hash, tmpdir)
-    set_up_downloaded_crates(tmpdir)
+    if args.formula:
+        set_up_downloaded_crates(tmpdir)
 
     create_repo_tarball(args.dotdir)
     fill_in_formula_template(

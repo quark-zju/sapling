@@ -29,7 +29,7 @@ class Sapling < Formula
     # force some specific location by setting the OPENSSL_DIR environment
     # variable. This is necessary since the installed OpenSSL library
     # might not match the architecture of the destination one.
-    ENV["OPENSSL_DIR"] = "%TMPDIR%/openssl@1.1/1.1.1s"
+    ENV["OPENSSL_DIR"] ||= Formula["openssl@1.1"].opt_prefix
     ENV["PYTHON_SYS_EXECUTABLE"] = Formula["python@3.11"].opt_prefix/"bin/python3.11"
     ENV["PYTHON"] = Formula["python@3.11"].opt_prefix/"bin/python3.11"
     ENV["PYTHON3"] = Formula["python@3.11"].opt_prefix/"bin/python3.11"
