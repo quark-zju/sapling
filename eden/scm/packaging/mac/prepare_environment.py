@@ -5,6 +5,7 @@
 # GNU General Public License version 2.
 
 import argparse
+import functools
 import os
 import re
 import shutil
@@ -19,24 +20,6 @@ parser = argparse.ArgumentParser(
 
 Also downloads additional brew bottles as required.
 """
-)
-
-parser.add_argument(
-    "-s",
-    "--hash",
-    default=[],
-    action="append",
-    type=str,
-    help="Hash of the bottle to be downloaded",
-)
-
-parser.add_argument(
-    "-f",
-    "--formula",
-    default=[],
-    action="append",
-    type=str,
-    help="Name of the bottle to be downloaded",
 )
 
 parser.add_argument(
@@ -79,60 +62,40 @@ parser.add_argument(
 def run_cmd(cmd: List[str]) -> str:
     return subprocess.check_output(cmd).decode("utf-8").rstrip()
 
+def brew_fetch(name: str, tag: str) -> str:
+    """Fetch bottle, return path"""
+    out = run_cmd(["brew", "fetch", f"--bottle-tag={tag}", name])
+    for line in out.splitlines():
+        if line.startswith("Downloaded to: ") or line.startswith("Already downloaded: "):
+            path = line.split(": ", 1)[-1]
+            print(f"{name} was downloaded to #{path}")
+            return path
+    print(f"{name} was not downloaded. brew fetch output:\n{out}")
+    raise SystemExit(1)
+    
 
-def get_bottle(bottle_name: str, bottle_hash: str, tmpdir: str):
-    """Downloads a bottle from homebrew-core given a bottle name and a hash.
-
-    The hash corresponds to the hash of some bottle (which can be specified in
-    the bottle section of homebrew formulas).
-
-    https://github.com/Homebrew/homebrew-core/blob/38fbd0c91238c4c1ab88936cf4c3205b3c400f90/Formula/python@3.11.rb#L16
-    is an example of this.
-    """
-    auth_url = f"https://ghcr.io/v2/homebrew/core/{bottle_name.replace('@', '/')}/blobs/sha256:{bottle_hash}"
-    auth_cmd = [
-        "curl",
-        "--header",
-        "Authorization: Bearer QQ==",
-        "--location",
-        "--silent",
-        "--head",
-        "--request",
-        "GET",
-        auth_url,
-    ]
-    url = None
-    for line in run_cmd(auth_cmd).split("\n"):
-        if re.match("^location: ", line):
-            url = line.split()[1]
-            break
-    if url is None:
-        raise RuntimeError(f"Unable to get actual url when querying {auth_url}")
-    cmd = [
-        "curl",
-        "--location",
-        "--remote-time",
-        url,
-        "--output",
-        os.path.join(tmpdir, f"{bottle_name}.bottle.tar.gz"),
-    ]
-    run_cmd(cmd)
-
-
-def set_up_downloaded_crates(tmpdir):
-    # Set Python crate
+def prepare_x64_arm_cross_compile(tmpdir):
+    """Prepare cross compile when host is x64 and target is arm"""
+    # Prepare arm Python.
+    # - `python` still runs: `python` and `libpython` need to be x64.
+    # - libraries are arm: libraries reported by python's `sysconfig` should be arm.
     brew_cmd = ["brew", "--cellar"]
     brew_location = run_cmd(brew_cmd)
     print(f"LOCATION IS {brew_location}")
+
     dylib_location = os.path.join(
         brew_location,
         "python@3.11/3.11.2_1/Frameworks/Python.framework/Versions/3.11/lib/libpython3.11.dylib",
     )
+
+    fetch = functools.partial(brew_fetch, tag="arm64_big_sur")
+    python_bottle_path = fetch("python@3.11")
+
     run_cmd(
         [
             "tar",
             "-zxvf",
-            os.path.join(tmpdir, "python@3.11.bottle.tar.gz"),
+            python_bottle_path,
             "-C",
             tmpdir,
             "python@3.11/3.11.2_1/Frameworks/Python.framework/Versions/3.11/Python",
@@ -146,12 +109,14 @@ def set_up_downloaded_crates(tmpdir):
         ),
         dylib_location,
     )
-    # Set OpenSSL crate
+
+    # Prepare arm OpenSSL.
+    openssl_bottle_path = fetch("openssl@1.1")
     run_cmd(
         [
             "tar",
             "-zxvf",
-            os.path.join(tmpdir, "openssl@1.1.bottle.tar.gz"),
+            openssl_bottle_path,
             "-C",
             tmpdir,
         ]
@@ -200,17 +165,11 @@ def fill_in_formula_template(target, version, tmpdir, filled_formula_dir):
 if __name__ == "__main__":
     args = parser.parse_args()
 
-    if len(args.hash) != len(args.formula):
-        print("Number of hashes and formulas to download must be the same")
-        exit(1)
-
     tmpdir = tempfile.mkdtemp()
     print(f"TMPDIR is {tmpdir}")
 
-    for (name, hash) in zip(args.formula, args.hash):
-        get_bottle(name, hash, tmpdir)
-    if args.formula:
-        set_up_downloaded_crates(tmpdir)
+    if args.target == "aarch64-apple-darwin" and os.uname().machine == "x86_64":
+        prepare_x64_arm_cross_compile(tmpdir)
 
     create_repo_tarball(args.dotdir)
     fill_in_formula_template(
