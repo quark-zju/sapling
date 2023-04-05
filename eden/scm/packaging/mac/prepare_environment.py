@@ -10,7 +10,9 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
+import textwrap
 from typing import List
 
 
@@ -60,17 +62,23 @@ parser.add_argument(
 
 
 def run_cmd(cmd: List[str]) -> str:
-    return subprocess.check_output(cmd).decode("utf-8").rstrip()
+    sys.stdout.flush()
+    out = subprocess.check_output(cmd).decode("utf-8").rstrip()
+    print(f"Output of {cmd}:\n{textwrap.indent(out, '    ')}")
+    sys.stdout.flush()
+    return out
 
 def brew_fetch(name: str, tag: str) -> str:
     """Fetch bottle, return path"""
     out = run_cmd(["brew", "fetch", f"--bottle-tag={tag}", name])
+    path = None
     for line in out.splitlines():
         if line.startswith("Downloaded to: ") or line.startswith("Already downloaded: "):
-            path = line.split(": ", 1)[-1]
-            print(f"{name} was downloaded to #{path}")
-            return path
-    print(f"{name} was not downloaded. brew fetch output:\n{out}")
+            path = line.split(": ", 1)[-1].strip()
+    if path:
+        print(f"{name} was downloaded to {path}")
+        return path
+    print(f"Unable to brew fetch {name}.")
     raise SystemExit(1)
     
 
