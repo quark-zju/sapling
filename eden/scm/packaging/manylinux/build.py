@@ -59,14 +59,22 @@ def get_sl_python_version(sl_path):
 
 
 def add_python_native_stdlib(sl_path, src, tar):
+    """sl_path: local `sl` binary; src: python_prefix (ex. /opt/python/cpy312-cpy312)"""
     # ex. "3.12"
     version = get_sl_python_version(sl_path)
-    src_python_native_lib_dir = os.path.join(src, f"lib/python{version}/lib-dynload")
+    rel_python_native_lib_dir = f"lib/python{version}/lib-dynload"
+    src_python_native_lib_dir = os.path.join(src, rel_python_native_lib_dir)
     if not os.path.isdir(src_python_native_lib_dir):
         raise RuntimeError(
             f"Missing native python library at {src_python_native_lib_dir}"
         )
-    tar.add(src_python_native_lib_dir, arcname=f"lib/python{version}/lib-dynload")
+    tar.add(src_python_native_lib_dir, arcname=rel_python_native_lib_dir)
+    # also, create a symlink at `sl_path` so the local `sl_path` can run.
+    sl_python_native_lib_dir = os.path.join(
+        os.path.dirname(sl_path), rel_python_native_lib_dir
+    )
+    os.makedirs(os.path.dirname(sl_python_native_lib_dir), exist_ok=True)
+    os.symlink(src_python_native_lib_dir, sl_python_native_lib_dir)
 
 
 def build_sl_and_isl(python_prefix):
