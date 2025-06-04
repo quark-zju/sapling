@@ -25,5 +25,13 @@ jobs:
         context: .
         file: .github/workflows/manylinux_2_34.Dockerfile
         push: true
-        platforms: linux/amd64,linux/arm64
-        tags: ${{ format('ghcr.io/{0}/manylinux_2_34:latest', github.repository) }}
+        platforms: linux/amd64
+        tags: ${{ format('ghcr.io/{0}/manylinux_2_34_x64:latest', github.repository) }}
+    - name: Build and Push Docker Image
+      uses: docker/build-push-action@v3
+      with:
+        context: .
+        file: .github/workflows/manylinux_2_34.Dockerfile
+        push: true
+        platforms: linux/arm64
+        tags: ${{ format('ghcr.io/{0}/manylinux_2_34_arm64:latest', github.repository) }}
