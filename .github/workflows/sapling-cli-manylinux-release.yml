@@ -32,7 +32,7 @@ jobs:
       run: ${{ format('VERSION={0} python3 ./packaging/manylinux/build.py', env.SAPLING_VERSION) }}
     - name: Rename .tar.xz
       working-directory: ./eden/scm
-      run: ${{ format('mv sapling-manylinux.tar.xz sapling-{0}-linux-{1}.tar.xz', env.SAPLING_VERSION, matrix.arch) }}
+      run: ${{ format('mv sl-manylinux.tar.xz sapling-{0}-linux-{1}.tar.xz', env.SAPLING_VERSION, matrix.arch) }}
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:

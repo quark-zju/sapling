@@ -10,6 +10,7 @@ import argparse
 import os
 import shutil
 import subprocess
+import sys
 import tarfile
 import tempfile
 
@@ -46,11 +47,10 @@ def is_dynamic_linked_to_python(sl_path):
     return "libpython" in ldd_out
 
 
-def get_sl_python_version(sl_path):
+def get_python_version(python_exe_path):
     out = subprocess.check_output(
         [
-            sl_path,
-            "debugpython",
+            python_exe_path,
             "-c",
             "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')",
         ]
@@ -58,23 +58,15 @@ def get_sl_python_version(sl_path):
     return out.decode("utf-8").strip()
 
 
-def add_python_native_stdlib(sl_path, src, tar):
-    """sl_path: local `sl` binary; src: python_prefix (ex. /opt/python/cpy312-cpy312)"""
-    # ex. "3.12"
-    version = get_sl_python_version(sl_path)
+def add_python_native_stdlib(python_prefix, tar):
+    version = get_python_version(os.path.join(python_prefix, "bin/python"))
     rel_python_native_lib_dir = f"lib/python{version}/lib-dynload"
-    src_python_native_lib_dir = os.path.join(src, rel_python_native_lib_dir)
+    src_python_native_lib_dir = os.path.join(python_prefix, rel_python_native_lib_dir)
     if not os.path.isdir(src_python_native_lib_dir):
         raise RuntimeError(
             f"Missing native python library at {src_python_native_lib_dir}"
         )
     tar.add(src_python_native_lib_dir, arcname=rel_python_native_lib_dir)
-    # also, create a symlink at `sl_path` so the local `sl_path` can run.
-    sl_python_native_lib_dir = os.path.join(
-        os.path.dirname(sl_path), rel_python_native_lib_dir
-    )
-    os.makedirs(os.path.dirname(sl_python_native_lib_dir), exist_ok=True)
-    os.symlink(src_python_native_lib_dir, sl_python_native_lib_dir)
 
 
 def build_sl_and_isl(python_prefix):
@@ -122,11 +114,13 @@ def main():
         add_stripped_sl_binary(sl_path, tar)
         if not is_dynamic_linked_to_python(sl_path):
             # Pure Python modules are part of the binary (lib/python-modules).
-            # Only add native modules.
-            add_python_native_stdlib(sl_path, python_prefix, tar)
+            # Only add native modules. This is to make the main binary run on
+            # other systems where the original python prefix doesn't exist.
+            add_python_native_stdlib(python_prefix, tar)
         tar.add(isl_path, arcname="isl-dist.tar.xz")
 
     os.rename(tmp_output_path, output_path)
+    print(f"Output: {os.path.realpath(output_path)}", file=sys.stderr)
 
 
 if __name__ == "__main__":
