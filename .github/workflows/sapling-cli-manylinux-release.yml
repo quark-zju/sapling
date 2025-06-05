@@ -50,6 +50,7 @@ jobs:
       uses: actions/download-artifact@v4
       with:
         pattern: sapling-linux-*
+        merge-multiple: true
     - name: Create pre-release
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
