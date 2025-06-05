@@ -6,6 +6,7 @@
 
 """Produce sl-manylinux.tar.xz that contains the sl binary and dependencies"""
 
+import contextlib
 import argparse
 import os
 import shutil
@@ -75,10 +76,40 @@ def build_sl_and_isl(python_prefix):
     )
     env = os.environ.copy()
     env["PYTHON_SYS_EXECUTABLE"] = os.path.join(python_prefix, "bin/python")
-    subprocess.check_call(["make", "oss"], cwd=project_root, env=env)
+    with downgraded_openssl():
+        subprocess.check_call(["make", "oss"], cwd=project_root, env=env)
     return os.path.join(project_root, "sl"), os.path.join(
         project_root, "isl-dist.tar.xz"
     )
+
+
+@contextlib.contextmanager
+def downgraded_openssl():
+    """'Downgrade' openssl to support (widely used) Debian 12 (bookworm)"""
+    # manylinux_2_34 uses OpenSSL 3.2.0. By default, curl-sys will link to
+    # symbols only exist in OpenSSL 3.2.0 (OSSL_get_max_threads,
+    # SSL_get0_group_name).
+    #
+    # Debian 12 (Debian stable at 2025-06-05) ships with OpenSSL 3.0.16, which
+    # does not contain those symbols. `sl` built with the new openssl will
+    # error out like:
+    #
+    #   /lib/x86_64-linux-gnu/libcrypto.so.3: version `OPENSSL_3.2.0' not found (required by ./sl)
+    #
+    # To check the symbol versions of a built executable, run: readelf -sV --wide sl
+    path = "/usr/include/openssl/opensslv.h"
+    with open(path, "rb") as f:
+        original = f.read()
+    patched = original.replace(
+        b"# define OPENSSL_VERSION_MINOR  2", b"# define OPENSSL_VERSION_MINOR  1"
+    )
+    with open(path, "wb") as f:
+        f.write(patched)
+    try:
+        yield
+    finally:
+        with open(path, "wb") as f:
+            f.write(original)
 
 
 def add_stripped_sl_binary(sl_path, tar):
