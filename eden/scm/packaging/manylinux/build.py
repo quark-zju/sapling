@@ -6,6 +6,7 @@
 
 """Produce sl-manylinux.tar.xz that contains the sl binary and dependencies"""
 
+import glob
 import contextlib
 import argparse
 import os
@@ -84,6 +85,21 @@ def build_sl_and_isl(python_prefix):
 
 
 @contextlib.contextmanager
+def patched(path_pattern: str, edit_func):
+    path = glob.glob(path_pattern)[0]
+    with open(path, "rb") as f:
+        original = f.read()
+    patched = edit_func(original)
+    with open(path, "wb") as f:
+        f.write(patched)
+    try:
+        yield
+    finally:
+        with open(path, "wb") as f:
+            f.write(original)
+
+
+@contextlib.contextmanager
 def downgraded_openssl():
     """'Downgrade' openssl to support (widely used) Debian 12 (bookworm)"""
     # manylinux_2_34 uses OpenSSL 3.2.0. By default, curl-sys will link to
@@ -97,19 +113,23 @@ def downgraded_openssl():
     #   /lib/x86_64-linux-gnu/libcrypto.so.3: version `OPENSSL_3.2.0' not found (required by ./sl)
     #
     # To check the symbol versions of a built executable, run: readelf -sV --wide sl
-    path = "/usr/include/openssl/opensslv.h"
-    with open(path, "rb") as f:
-        original = f.read()
-    patched = original.replace(
-        b"# define OPENSSL_VERSION_MINOR  2", b"# define OPENSSL_VERSION_MINOR  1"
-    )
-    with open(path, "wb") as f:
-        f.write(patched)
-    try:
+    with (
+        patched(
+            "/usr/include/openssl/opensslv.h",
+            lambda s: s.replace(
+                b"# define OPENSSL_VERSION_MINOR  2",
+                b"# define OPENSSL_VERSION_MINOR  1",
+            ),
+        ),
+        patched(
+            "/usr/include/openssl/configuration-*.h",
+            lambda s: s.replace(
+                b"# define OPENSSL_CONFIGURED_API 302",
+                b"# define OPENSSL_CONFIGURED_API 301",
+            ),
+        ),
+    ):
         yield
-    finally:
-        with open(path, "wb") as f:
-            f.write(original)
 
 
 def add_stripped_sl_binary(sl_path, tar):
