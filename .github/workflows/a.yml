@@ -1,0 +1,15 @@
+name: Clean up docker images
+on:
+  workflow_dispatch: null
+  schedule:
+  - cron: 0 1 * * mon
+jobs:
+  clone-and-build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/delete-package-versions@v5
+      with: 
+        package-name: sapling/manylinux_2_34
+        package-type: container
+        min-versions-to-keep: 0
+        delete-only-untagged-versions: true
