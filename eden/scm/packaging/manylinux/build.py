@@ -86,17 +86,21 @@ def build_sl_and_isl(python_prefix):
 
 @contextlib.contextmanager
 def patched(path_pattern: str, edit_func):
-    path = glob.glob(path_pattern)[0]
-    with open(path, "rb") as f:
-        original = f.read()
-    patched = edit_func(original)
-    with open(path, "wb") as f:
-        f.write(patched)
+    backup = {}
+    for path in glob.glob(path_pattern):
+        with open(path, "rb") as f:
+            original = f.read()
+        patched = edit_func(original)
+        if original != patched:
+            backup[path] = original
+            with open(path, "wb") as f:
+                f.write(patched)
     try:
         yield
     finally:
-        with open(path, "wb") as f:
-            f.write(original)
+        for path, original in backup.items():
+            with open(path, "wb") as f:
+                f.write(original)
 
 
 @contextlib.contextmanager
@@ -122,7 +126,7 @@ def downgraded_openssl():
             ),
         ),
         patched(
-            "/usr/include/openssl/configuration-*.h",
+            "/usr/include/openssl/configuration*.h",
             lambda s: s.replace(
                 b"# define OPENSSL_CONFIGURED_API 302",
                 b"# define OPENSSL_CONFIGURED_API 301",
