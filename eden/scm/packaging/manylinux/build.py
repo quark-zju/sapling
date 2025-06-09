@@ -70,6 +70,7 @@ def add_python_native_stdlib(python_prefix, tar):
 
 
 def build_sl_and_isl(python_prefix):
+    subprocess.check_call(['dnf', 'install', '-y', 'perl'])
     project_root = os.path.dirname(
         os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
     )
