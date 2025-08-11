@@ -1,8 +1,6 @@
 name: Docker Image for build - manylinux_2_34
 on:
   workflow_dispatch: null
-  schedule:
-  - cron: 0 1 * * mon
 jobs:
   clone-and-build:
     runs-on: ubuntu-latest
